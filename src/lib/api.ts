@@ -18,13 +18,25 @@ export interface LocationResponse {
   query: string;
 }
 
-export async function getLocation() {
-  try {
-    const response = await fetch("http://ip-api.com/json/");
-    const json = (await response.json() as LocationResponse);
-    if (typeof json.lat === "number" && typeof json.lon === "number") {
-      return [json.lon, json.lat] as LngLatLike;
+export async function getLocation(): Promise<LngLatLike> {
+  // Try browser geolocation first (more accurate and no CORS issues)
+  if (navigator.geolocation) {
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          timeout: 10000,
+          enableHighAccuracy: true,
+          maximumAge: 300000 // 5 minutes
+        });
+      });
+      
+      const { latitude, longitude } = position.coords;
+      console.log("Browser geolocation found - lat:", latitude, "lon:", longitude);
+      return [longitude, latitude] as LngLatLike;
+    } catch (error) {
+      console.warn("Browser geolocation failed:", error);
     }
-  } catch { }
+  }
+  console.log("Using fallback location:", middleOfUSA);
   return middleOfUSA;
 }
